@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Source Panel — Concept</title>
+  <!-- Free serif for the answer text; falls back to Georgia offline -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Header: title + persistent "unofficial" label -->
+  <header class="topbar">
+    <h1 class="topbar-title">Source Panel</h1>
+    <span class="concept-label">Unofficial concept for Claude — not an Anthropic product</span>
+  </header>
+
+  <div class="app">
+    <!-- Chat column -->
+    <main class="chat" id="chat">
+      <div class="chat-scroll">
+        <div class="thread" id="thread">
+          <!-- Rendered from data.js by script.js -->
+        </div>
+      </div>
+
+      <!-- Static composer, for context only -->
+      <div class="composer-wrap">
+        <div class="composer" aria-hidden="true">
+          <span class="composer-placeholder">Reply…</span>
+          <span class="composer-send" id="composer-send"></span>
+        </div>
+      </div>
+    </main>
+
+    <!-- Mobile-only dimmed backdrop behind the bottom sheet -->
+    <div class="panel-backdrop" id="panel-backdrop"></div>
+
+    <!-- Source panel (desktop: right side panel, mobile: bottom sheet) -->
+    <aside class="panel" id="panel" aria-hidden="true" aria-labelledby="panel-title" inert>
+      <!-- Mobile: drag this (or the header) down to close -->
+      <div class="panel-handle" aria-hidden="true"><span class="panel-handle-bar"></span></div>
+      <header class="panel-header">
+        <div class="panel-heading">
+          <h2 class="panel-title" id="panel-title" tabindex="-1">Source</h2>
+          <div class="panel-meta" id="panel-meta"></div>
+          <!-- Source-type label + one-line description of the site -->
+          <div class="panel-about" id="panel-about"></div>
+        </div>
+        <button class="icon-btn" id="panel-close" type="button" aria-label="Close source panel">×</button>
+      </header>
+      <div class="panel-body" id="panel-body">
+        <p class="panel-empty">Source passage appears here.</p>
+      </div>
+    </aside>
+  </div>
+
+  <script src="icons.js"></script>
+  <script src="data.js"></script>
+  <script src="script.js"></script>
+  <!-- Demo mode for recording the video: only runs with ?demo in the URL -->
+  <script src="demo.js"></script>
+</body>
+</html>
