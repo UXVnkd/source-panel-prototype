@@ -1,7 +1,8 @@
 // demo.js — autoplay walkthrough for recording the demo video.
 //
-// Open:   index.html?demo        → press Space to start (start your recorder first)
-//         index.html?demo=auto   → starts by itself after 1.5s
+// Open:   index.html?demo  (or #demo)            → press Space to start
+//         index.html?demo=auto  (or #demo-auto)  → starts by itself after 1.5s
+// (#demo works where query strings don't pass through, e.g. a Claude artifact.)
 // Replay: press R (reloads and plays again).
 //
 // The demo drives the REAL prototype (it clicks the real chips and buttons),
@@ -11,7 +12,10 @@
 
 (function () {
   const params = new URLSearchParams(location.search);
-  if (!params.has('demo')) return;                       // normal use: do nothing
+  const hash = location.hash.slice(1);
+  const inDemo = params.has('demo') || hash === 'demo' || hash === 'demo-auto';
+  if (!inDemo) return;                                    // normal use: do nothing
+  const autoStart = params.get('demo') === 'auto' || hash === 'demo-auto';
 
   const TEXT = window.PROTOTYPE_DATA.demo;
   document.body.classList.add('demo-mode');               // hides the real cursor
@@ -130,23 +134,23 @@
     await say(TEXT.captions.link, 2200);
     unhover('.source-line');
 
-    // 14–20s: scroll to Compare
-    await moveTo('#panel-body', 700, 0.85, 0.5);
-    await scrollPanelTo('.compare');
-    await say(TEXT.captions.compare, 3600);
+    // 14–20s: open "See what changed"
+    await moveTo('.verdict-toggle', 900, 0.3, 0.5);
+    await click('.verdict-toggle');
+    await wait(500);
+    await say(TEXT.captions.compare, 3400);
 
-    // 20–24s: switch to a claim that matches
+    // 20–23s: flag it
+    await scrollPanelTo('.feedback', 140);
+    await moveTo('.btn-secondary[data-value="mismatch"]', 800);
+    await click('.btn-secondary[data-value="mismatch"]');
+    await say(TEXT.captions.feedback, 2200);
+
+    // 23–27s: switch to a claim that matches
     await moveTo('.cite-chip[data-claim="C2"]', 1000);
     await click('.cite-chip[data-claim="C2"]');
-    await wait(1500);                                     // let the green pair register first
-    await scrollPanelTo('.compare');
-    await say(TEXT.captions.match, 2400);
-
-    // 24–27s: confirm it
-    await scrollPanelTo('.feedback', 140);
-    await moveTo('.btn-secondary[data-value="match"]', 800);
-    await click('.btn-secondary[data-value="match"]');
-    await say(TEXT.captions.feedback, 2200);
+    await wait(500);
+    await say(TEXT.captions.match, 2600);
 
     // 27–32s: close, end card
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
@@ -164,8 +168,10 @@
   document.addEventListener('keydown', e => {
     if (e.code === 'Space' && !started) { e.preventDefault(); start(); }
     if (e.key === 'r' || e.key === 'R') {
-      location.search = '?demo=auto';                     // reload and replay
+      // Reload and replay (hash form when that's how demo mode was opened)
+      if (params.has('demo')) location.search = '?demo=auto';
+      else { location.hash = 'demo-auto'; location.reload(); }
     }
   });
-  if (params.get('demo') === 'auto') setTimeout(start, 1500);
+  if (autoStart) setTimeout(start, 1500);
 })();

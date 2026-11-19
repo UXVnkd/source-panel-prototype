@@ -1,122 +1,135 @@
 // data.js — single source of truth for the prototype.
-// Everything on screen is rendered from this object. All content is fictional.
+// REAL SCENARIO: sources, passages and source lines are copied word for word
+// from the published pages (checked November 2026). The answer is an example
+// written for this demo: some claims deliberately drift from their sources.
+// The original fictional version is kept in data-fictional.js.
 
 window.PROTOTYPE_DATA = {
-  question: "Do onboarding checklists improve activation?",
+  question: "AI chat apps warn that they “can make mistakes. Check important info.” Are we concerned enough about this?",
 
-  // The answer is a list of pieces, in reading order:
+  // Shown above the answer so viewers know the drift is staged.
+  answerNote: "Example answer written for this demo. Sources and quotes are real; some claims drift from them on purpose.",
+
+  // The answer, in reading order:
   //   a plain string           → connecting text
   //   { claim: "C1", after }   → a cited claim, plus optional punctuation
-  //                              placed after it (outside the highlight, before the chip)
   answer: [
-    "Onboarding checklists are one of the most common activation tactics. ",
-    { claim: "C1" },
-    " ",
+    "Probably not. The warning asks people to check, but few do. In Google search, ",
     { claim: "C2", after: "," },
     " and ",
-    { claim: "C3", after: "." },
-    " However, ",
-    { claim: "C4", after: "," },
-    " so the first step matters most."
+    { claim: "C1", after: "." },
+    " And checking isn't easy, because citations themselves often fall short: ",
+    { claim: "C3", after: "," },
+    " and ",
+    { claim: "C4", after: "." }
   ],
 
   // Each claim shares one highlight color with its source line.
-  // flags: phrases that changed meaning, marked in the compare view (step 5).
+  // flags: phrases whose meaning changed between answer and source.
   claims: {
     C1: {
-      text: "Onboarding checklists improve activation by 40%.",
+      text: "only 1% of people click the sources in AI answers",
       source: "S1",
-      sourceLine: "In one company's test, checklists lifted activation by up to 40%.",
+      sourceLine: "This occurred in just 1% of all visits to pages with such a summary.",
       color: "amber",
       verdict: "mismatch",
       flags: {
-        answer: ["by 40%"],
-        source: ["In one company's test", "by up to 40%"]
+        answer: ["1% of people", "AI answers"],
+        source: ["1% of all visits", "pages with such a summary"]
       },
-      note: "The source says “up to 40%” in one company's test. The answer says 40%."
+      note: "The source counted 1% of visits to Google search pages with an AI summary. The answer turns that into 1% of people, across all AI answers."
     },
     C2: {
-      text: "They work best with 3 to 5 steps",
-      source: "S2",
-      sourceLine: "Teams saw the best completion rates with three to five steps.",
+      text: "users who saw an AI summary clicked a traditional search result in 8% of visits",
+      source: "S1",
+      sourceLine: "Users who encountered an AI summary clicked on a traditional search result link in 8% of all visits.",
       color: "sage",
       verdict: "match",
       flags: { answer: [], source: [] },
-      note: "Wording matches the source."
+      note: "Same meaning as the source."
     },
     C3: {
-      text: "adding a progress bar increases completion",
-      source: "S2",
-      sourceLine: "Adding a progress bar increased completion in our tests.",
+      text: "31% of responses had serious sourcing problems",
+      source: "S3",
+      sourceLine: "31% of responses showed serious sourcing problems – missing, misleading, or incorrect attributions.",
       color: "lavender",
       verdict: "match",
       flags: { answer: [], source: [] },
-      note: "Wording matches the source."
+      note: "Same meaning as the source. The study tested AI assistants' answers to news questions."
     },
     C4: {
-      text: "most users abandon checklists after the first day",
-      source: "S1",
-      sourceLine: "Many users who skip the first step never return to the checklist.",
+      text: "about half of what AI search engines say is false",
+      source: "S2",
+      sourceLine: "a mere 51.5% of generated sentences are fully supported by citations",
       color: "rose",
       verdict: "mismatch",
       flags: {
-        answer: ["most users", "after the first day"],
-        source: ["Many users", "who skip the first step"]
+        answer: ["is false"],
+        source: ["fully supported by citations"]
       },
-      note: "The source says “many users who skip the first step” don't return. The answer says “most users” abandon “after the first day.”"
+      note: "The study found about half of sentences weren't fully supported by their citations. That's a citation problem; it doesn't mean those sentences were false. It tested four search engines in 2023."
     }
   },
 
-  // Sources. `label` is the short lowercase name shown on citation chips
-  // (fictional, styled like a site name).
-  // `siteLabel` + `about` describe the whole site (not any single claim)
-  // and appear in the panel header.
+  // Sources. `label` is the short name on citation chips (styled like a site name).
+  // `siteLabel` + `about` describe the whole site, not any single claim.
+  // Each passage is copied from the page; "[…]" marks skipped text.
   // The passage must contain each claim's sourceLine word for word.
   sources: {
     S1: {
-      number: 1,
-      label: "onboardingreview",
-      name: "The Onboarding Review",
-      type: "Blog",
-      siteLabel: "Industry blog",
-      icon: "newspaper",          // Lucide icon name (see icons.js)
-      about: "An independent blog about SaaS onboarding.",
-      date: "March 2026",
-      url: "https://example.com/onboarding-checklists",
+      label: "pewresearch",
+      name: "Pew Research Center",
+      type: "Analysis",
+      siteLabel: "Research center",
+      icon: "chart-column",
+      about: "Publishes survey and data research on public attitudes and trends.",
+      date: "July 2025",
+      url: "https://www.pewresearch.org/short-reads/2025/07/22/google-users-are-less-likely-to-click-on-links-when-an-ai-summary-appears-in-the-results/",
       passage:
-        "Checklists have become a default pattern in SaaS onboarding. Results vary widely by product and audience. " +
-        "In one company's test, checklists lifted activation by up to 40%. " +
-        "Other teams reported smaller gains, and a few saw none. " +
-        "Many users who skip the first step never return to the checklist. " +
-        "That makes the first step the most important design decision."
+        "Google users who encounter an AI summary are less likely to click on links to other websites than users who do not see one. " +
+        "Users who encountered an AI summary clicked on a traditional search result link in 8% of all visits. " +
+        "Those who did not encounter an AI summary clicked on a search result nearly twice as often (15% of visits). " +
+        "Google users who encountered an AI summary also rarely clicked on a link in the summary itself. " +
+        "This occurred in just 1% of all visits to pages with such a summary."
     },
     S2: {
-      number: 2,
-      label: "productpatterns",
-      name: "Product Patterns Quarterly",
-      type: "Study",
-      siteLabel: "Research report",
+      label: "arxiv",
+      name: "Evaluating Verifiability in Generative Search Engines",
+      type: "Paper",
+      siteLabel: "Research paper archive",
       icon: "book-open",
-      about: "A quarterly review of onboarding flows across products.",
-      date: "January 2026",
-      url: "https://example.com/checklist-study",
+      about: "Hosts research papers shared openly, often before or alongside peer review.",
+      date: "April 2023",
+      url: "https://arxiv.org/abs/2304.09848",
       passage:
-        "We reviewed onboarding flows across 120 products. " +
-        "Teams saw the best completion rates with three to five steps. " +
-        "Longer lists showed steady drop-off after the fifth item. " +
-        "Adding a progress bar increased completion in our tests. " +
-        "Effects were strongest for first-time users."
+        "Generative search engines directly generate responses to user queries, along with in-line citations. […] " +
+        "We find that responses from existing generative search engines are fluent and appear informative, but frequently contain unsupported statements and inaccurate citations: on average, a mere 51.5% of generated sentences are fully supported by citations and only 74.5% of citations support their associated sentence. " +
+        "We believe that these results are concerningly low for systems that may serve as a primary tool for information-seeking users, especially given their facade of trustworthiness."
+    },
+    S3: {
+      label: "bbc",
+      name: "BBC Media Centre",
+      type: "Press release",
+      siteLabel: "Broadcaster press office",
+      icon: "megaphone",
+      about: "Official press releases from the BBC. This one reports an EBU study led by the BBC.",
+      date: "October 2025",
+      url: "https://www.bbc.co.uk/mediacentre/2025/new-ebu-research-ai-assistants-news-content",
+      passage:
+        "Professional journalists from participating PSM evaluated more than 3,000 responses from ChatGPT, Copilot, Gemini, and Perplexity against key criteria, including accuracy, sourcing, distinguishing opinion from fact, and providing context. […] " +
+        "45% of all AI answers had at least one significant issue. " +
+        "31% of responses showed serious sourcing problems – missing, misleading, or incorrect attributions. " +
+        "20% contained major accuracy issues, including hallucinated details and outdated information."
     }
   },
 
-  // Demo mode (open index.html?demo): captions shown during the scripted
-  // walkthrough, and the end card. Edit freely.
+  // Demo mode (index.html?demo or #demo): captions and end card.
   demo: {
     captions: {
       hook:    "AI answers cite sources. But does the source say that?",
       open:    "The source comes to the claim.",
       link:    "Same color, same claim.",
-      compare: "“40%” vs “up to 40%, in one company's test”",
+      compare: "“1% of people” vs “1% of all visits”",
       match:   "It shows what holds up too.",
       feedback:"One tap to confirm or flag."
     },

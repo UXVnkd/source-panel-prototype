@@ -105,6 +105,8 @@
   // Assistant answer: plain serif paragraph built from text + claim pieces.
   function renderAnswer() {
     const wrap = el('div', 'msg-assistant');
+    // Optional note above the answer (e.g. "Example answer written for this demo").
+    if (DATA.answerNote) wrap.appendChild(el('p', 'answer-note', DATA.answerNote));
     const p = el('p');
     DATA.answer.forEach(piece => {
       p.appendChild(typeof piece === 'string' ? document.createTextNode(piece) : renderClaim(piece));
@@ -216,25 +218,57 @@
     return row;
   }
 
-  // Compare block: verdict tag, the two rows, and a plain-language note.
+  // Verdict + compare, shown progressively:
+  //  - Match:    one quiet line, "Matches the source". Nothing to expand.
+  //  - Mismatch: one line, "Changed meaning · See what changed". Tapping it
+  //              reveals the side-by-side rows, the note and the feedback.
+  // Keeps the first view light: the passage and its highlight do the main work.
   function renderCompare(claimId) {
     const claim = DATA.claims[claimId];
     const mismatch = claim.verdict === 'mismatch';
 
     const section = el('section', 'compare ' + (mismatch ? 'is-mismatch' : 'is-match'));
-    section.setAttribute('aria-label', 'Compare the answer with the source');
+    section.setAttribute('aria-label', 'How the answer compares with the source');
 
-    const head = el('div', 'compare-head');
-    head.appendChild(el('h3', 'compare-title', 'Compare'));
-    head.appendChild(mismatch
-      ? withIcon('span', 'verdict-tag verdict-warn', 'triangle-alert', 'Changed meaning')
-      : withIcon('span', 'verdict-tag verdict-ok', 'check', 'Matches'));
-    section.appendChild(head);
+    if (!mismatch) {
+      section.appendChild(withIcon('p', 'verdict-tag verdict-ok', 'check', 'Matches the source'));
+      return section;
+    }
 
-    section.appendChild(compareRow('In the answer:', claim.text, claim.flags.answer, claim.color));
-    section.appendChild(compareRow('In the source:', claim.sourceLine, claim.flags.source, claim.color));
+    // The toggle: verdict + "See what changed" + chevron
+    const toggle = el('button', 'verdict-toggle');
+    toggle.type = 'button';
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-controls', 'compare-detail');
+    toggle.appendChild(withIcon('span', 'verdict-tag verdict-warn', 'triangle-alert', 'Changed meaning'));
+    toggle.appendChild(el('span', 'verdict-more', 'See what changed'));
+    toggle.appendChild(icon('chevron-down', 'verdict-chevron'));
+    section.appendChild(toggle);
 
-    section.appendChild(el('p', 'compare-note', claim.note));
+    // The hidden detail. Collapsed with a grid-rows trick so it can animate;
+    // `inert` keeps its buttons out of Tab order and screen readers while closed.
+    const detail = el('div', 'compare-detail');
+    detail.id = 'compare-detail';
+    detail.inert = true;
+    const inner = el('div', 'compare-detail-inner');
+    const card = el('div', 'compare-card');
+    card.appendChild(compareRow('In the answer:', claim.text, claim.flags.answer, claim.color));
+    card.appendChild(compareRow('In the source:', claim.sourceLine, claim.flags.source, claim.color));
+    card.appendChild(el('p', 'compare-note', claim.note));
+    inner.appendChild(card);
+    inner.appendChild(renderFeedback(claimId));
+    detail.appendChild(inner);
+    section.appendChild(detail);
+
+    toggle.addEventListener('click', () => {
+      const open = toggle.getAttribute('aria-expanded') !== 'true';
+      toggle.setAttribute('aria-expanded', String(open));
+      section.classList.toggle('is-open', open);
+      detail.inert = !open;
+      // Once it has opened, bring the new content into view.
+      if (open) setTimeout(() => detail.scrollIntoView({
+        block: 'nearest', behavior: reduceMotion.matches ? 'auto' : 'smooth' }), 160);
+    });
     return section;
   }
 
@@ -316,8 +350,7 @@
     panelBody.innerHTML = '';
     panelBody.appendChild(renderPassage(claimId));
     panelBody.appendChild(renderOpenOriginal(claimId));
-    panelBody.appendChild(renderCompare(claimId));
-    panelBody.appendChild(renderFeedback(claimId));
+    panelBody.appendChild(renderCompare(claimId));   // feedback lives inside its expandable part
   }
 
   // ---------- Highlights ----------
@@ -465,6 +498,7 @@
   function trapFocus(e) {
     if (!activeClaimId || !isMobile.matches) return;
     const focusable = [...panel.querySelectorAll('button:not(:disabled), a[href], [tabindex="-1"]')]
+      .filter(n => !n.closest('[inert]'))            // skip collapsed (inert) content
       .filter(n => n.tabIndex >= 0 || n === panelTitle);
     const tabbable = focusable.filter(n => n.tabIndex >= 0);
     if (!tabbable.length) return;
