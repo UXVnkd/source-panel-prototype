@@ -18,6 +18,13 @@
   .window.fade-top { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 20%); mask-image: linear-gradient(to bottom, transparent 0, #000 20%); box-shadow: 0 0 0 1.3px rgba(222, 212, 196, 1); }
   .window.fade-bottom { -webkit-mask-image: linear-gradient(to top, transparent 0, #000 20%); mask-image: linear-gradient(to top, transparent 0, #000 20%); box-shadow: 0 0 0 1.3px rgba(222, 212, 196, 1); }
   .window iframe { position: absolute; left: 0; top: 0; border: 0; transform-origin: 0 0; background: #F6F3EC; }
+  /* Square loops: headline on the gradient (Bricolage Grotesque, OFL) */
+  @font-face { font-family: "Bricolage"; src: url(fonts/bricolage-grotesque-latin-600-normal.woff2) format("woff2"); font-weight: 600; }
+  .headline {
+    position: fixed; left: 50%; top: 58px; transform: translateX(-50%); width: 600px; margin: 0; z-index: 5;
+    font: 600 40px/1.1 "Bricolage", system-ui, sans-serif; letter-spacing: -0.02em; text-align: center;
+    color: #2A221C; text-wrap: balance;
+  }
   .cursor { position: fixed; left: 0; top: 0; z-index: 10; pointer-events: none; will-change: transform; }
   .cursor svg { display: block; fill: #2C2823; stroke: #fff; stroke-width: 1.5; stroke-linejoin: round;
     filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25)); transform-origin: 15% 15%; transition: transform 120ms cubic-bezier(0.23,1,0.32,1); }

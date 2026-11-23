@@ -8,7 +8,11 @@
 
 (function () {
   const ID = location.hash.slice(1);
-  const W = 1280, H = 720;                       // stage size in CSS px (× 3 = 4K)
+  // Square loops ("sq-<name>"): 720×720 stage (× 3 = 2160 square), a headline on
+  // the gradient and the cropped interface rising from the bottom edge. They
+  // replay the matching "v2-<name>" interaction.
+  const SQ = ID.startsWith('sq-');
+  const W = SQ ? 720 : 1280, H = 720;            // stage size in CSS px (× 3 = 4K)
   const win = document.getElementById('win');
   const frame = document.getElementById('app');
   document.getElementById('bg').style.backgroundImage = `url(bg/${ID}.jpg)`;
@@ -374,11 +378,43 @@
   };
 
   // ---------- boot ----------
-  const L = LOOPS[ID];
+  // ---------- square framing ----------
+  const SQUARE = {
+    pair:     { title: 'Matching colors link claim and source at a glance.', focus: () => [520, 180, 1280, 640] },
+    pills:    { title: 'One pill per sentence.', focus: () => { const u = union(['.msg-assistant p:not(.answer-note)']); return [u[0] - 28, u[1] - 26, u[2] + 28, u[3] + 26]; } },
+    popover:  { title: 'Popover first, panel on demand.', focus: () => [600, 240, 1280, 700] },
+    logos:    { title: 'Source names and logos that set expectations before the tap.', focus: () => [770, 48, 1190, 392] },
+    quiet:    { title: 'Matches stay quiet so mismatches stand out.', focus: () => [560, 240, 1010, 676] },
+    verdict:  { title: 'Verdict first, details on demand.', focus: () => { const l = rectOf('.source-line'), t = rectOf('.verdict-toggle'); return [892, l.top - 20, 1280, t.bottom + 24]; } },
+    attrib:   { title: 'Verdicts that say who judged them.', focus: () => { const l = rectOf('.source-line'), t = rectOf('.verdict-toggle'); return [892, l.top - 20, 1280, t.bottom + 24]; } },
+    site:     { title: 'Site labels that don’t overclaim.', focus: () => [893, 52, 1280, 262] },
+    badge:    { title: 'A badge that only vouches for what it covers.', focus: () => [0, 250, 390, 844] },
+    feedback: { title: 'Neutral language, feedback in context.', focus: () => { const u = union(['.compare-card', '.feedback']); return [895, u[1] - 14, 1280, u[3] + 40]; } },
+    mobile:   { title: 'Mobile, following Apple’s sheet guidelines.', focus: () => [0, 150, 390, 844] },
+  };
+  function squareFraming(key, headline) {
+    return () => {
+      const f = SQUARE[key].focus(), fw = f[2] - f[0], fh = f[3] - f[1];
+      const top = Math.max(H * 0.38, headline.getBoundingClientRect().bottom + 36);   // window starts under the headline
+      const Zs = Math.min(W * 0.86 / fw, (H - top - 28) / fh, 1.7);
+      const clipH = (H - top + 60) / Zs;                                             // runs past the bottom edge
+      const clip = [f[0], f[1], f[2], f[1] + clipH];
+      return { zoom: Zs, clip, at: [0.5, (top + clipH * Zs / 2) / H], radius: 30 };
+    };
+  }
+
+  let L = LOOPS[ID];
+  if (SQ) {
+    const key = ID.slice(3);
+    const h = document.createElement('h1');
+    h.className = 'headline'; h.textContent = SQUARE[key].title;
+    document.body.appendChild(h);
+    L = { ...LOOPS['v2-' + key], framing: squareFraming(key, h) };
+  }
   frame.style.width = L.vw + 'px'; frame.style.height = L.vh + 'px';
   frame.addEventListener('load', async () => {
     A = frame.contentWindow; D = frame.contentDocument;
-    await D.fonts.ready;
+    await D.fonts.ready; await document.fonts.ready;
     patchScroll();
     if (L.setup) await L.setup();
     frameWindow({ vw: L.vw, vh: L.vh, ...L.framing() });

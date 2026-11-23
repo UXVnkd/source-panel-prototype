@@ -11,9 +11,10 @@ const path = require('path');
 
 const ROOT = __dirname, ORIGIN = 'http://loop.local';
 const FPS = 60, SCALE = 3;
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.jpg': 'image/jpeg', '.png': 'image/png', '.otf': 'font/otf' };
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.jpg': 'image/jpeg', '.png': 'image/png', '.otf': 'font/otf', '.woff2': 'font/woff2' };
 const ALL_OLD = ['1-pair', '2-chips', '3-verdict', '4-what-changed', '5-site-label', '6-feedback', '7-mobile'];
-const ALL = ['v2-pair','v2-pills','v2-popover','v2-logos','v2-quiet','v2-verdict','v2-attrib','v2-site','v2-badge','v2-feedback','v2-mobile'];
+const ALL_V2 = ['v2-pair','v2-pills','v2-popover','v2-logos','v2-quiet','v2-verdict','v2-attrib','v2-site','v2-badge','v2-feedback','v2-mobile'];
+const ALL = ['sq-pair','sq-pills','sq-popover','sq-logos','sq-quiet','sq-verdict','sq-attrib','sq-site','sq-badge','sq-feedback','sq-mobile'];
 const ids = process.argv.slice(2).length ? process.argv.slice(2) : ALL;
 
 const SYNC = now => {
@@ -29,7 +30,7 @@ const SYNC = now => {
   fs.mkdirSync(path.join(ROOT, 'loops/out'), { recursive: true });
   const browser = await chromium.launch();
   for (const id of ids) {
-    const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: SCALE });
+    const page = await browser.newPage({ viewport: { width: id.startsWith('sq-') ? 720 : 1280, height: 720 }, deviceScaleFactor: SCALE });
     page.on('pageerror', e => console.error(id, 'page error:', e.message));
     await page.route(ORIGIN + '/**', route => {
       const p = path.join(ROOT, decodeURIComponent(new URL(route.request().url()).pathname));
