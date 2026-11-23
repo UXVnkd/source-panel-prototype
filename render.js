@@ -14,7 +14,7 @@ const path = require('path');
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d; };
 const FPS = +arg('fps', 60);
 const SCALE = +arg('scale', 3);                 // 1280×720 layout × 3 = 3840×2160
-const MAX_SECONDS = +arg('seconds', 30);
+const MAX_SECONDS = +arg('seconds', 45);   // stops earlier when the timeline sets __videoDone
 const OUT = arg('out', 'video-4k60.mp4');
 const AUDIO = arg('audio', null);               // optional music file
 
