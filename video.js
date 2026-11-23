@@ -20,11 +20,13 @@
 
   const TEXT = {
     hook:     '“Check important info.”\nBut who actually checks?',
-    open:     'The source comes to the claim.',
+    pill:     'One pill per sentence.',
+    match:    'The source comes to the claim.',
+    changed:  'And it flags what changed.',
     link:     'Same color, same claim.',
     compare:  '“1% of people” vs “1% of all visits”',
-    flag:     'One tap to confirm the check.',
-    match:    'It shows what holds up too.',
+    flag:     'Compared by AI. Confirmed by you.',
+    badge:    'A badge only where it’s earned.',
     endTitle: 'Bring the source to the claim.',
     endLabel: 'Unofficial concept for Claude — not an Anthropic product',
     endByline: (window.PROTOTYPE_DATA.demo && window.PROTOTYPE_DATA.demo.endCard.byline) || ''
@@ -162,7 +164,12 @@
   }
   const unsay = () => caption.classList.remove('is-on');
 
-  // ---------- Timeline (~24 s) ----------
+  // ---------- Timeline (~30 s) ----------
+  // Popovers place themselves from on-screen measurements, so they are opened
+  // and paged at zoom 1; the camera pushes in only after they are placed.
+  const P1 = '.cite-chip[data-claim="G:C2,C1"]', P2 = '.cite-chip[data-claim="G:C3,C4"]';
+  const NEXT = '[aria-label="Next source"]', EXPAND = '.sp-foot .sp-link:last-child';
+
   async function play() {
     placeCursor();
     await wait(150);
@@ -172,29 +179,46 @@
     await wait(2100);
     unsay();
 
-    // 2.2–4.4s  zoom toward the chip, click
-    zoomTo('.cite-chip[data-claim="C1"]', 1.6, 500);
-    await moveTo('.cite-chip[data-claim="C1"]', 700);
-    hover('.cite-chip[data-claim="C1"]');
-    await wait(250);
-    await click('.cite-chip[data-claim="C1"]');
-    unhover('.cite-chip[data-claim="C1"]');
+    // 2.2–5s  the pill: hovering tints both claims it covers
+    zoomTo(P1, 1.6, 500);
+    await moveTo(P1, 700);
+    hover(P1);
+    say(TEXT.pill);
+    await wait(1500);
 
-    // 4.4–7.4s  panel slides in; zoom out to see both highlights, hold
-    await wait(120);
-    await zoomOut(480);
-    say(TEXT.open);
-    await wait(2400);
-
-    // 7.4–9.4s  hover the source line → claim pulses
+    // 5–9s  popover with the exact source line (a match)
     unsay();
+    await zoomOut(380);
+    await click(P1);
+    unhover(P1);
+    await wait(250);
+    await zoomTo('.src-pop', 1.45, 480);
+    say(TEXT.match);
+    await wait(1900);
+
+    // 9–12.5s  next citation: a possible change
+    unsay();
+    await zoomOut(380);
+    await moveTo(NEXT, 450);
+    await click(NEXT);
+    await wait(200);
+    await zoomTo('.src-pop', 1.45, 450);
+    say(TEXT.changed);
+    await wait(1700);
+
+    // 12.5–15.5s  expand to the side panel; hover the source line
+    unsay();
+    await zoomOut(380);
+    await moveTo(EXPAND, 500);
+    await click(EXPAND);
+    await wait(650);
     await moveTo('.source-line', 650, 0.55, 0.35);
     hover('.source-line');
     say(TEXT.link);
     await wait(1500);
     unhover('.source-line');
 
-    // 9.4–12.6s  "See what changed"
+    // 15.5–19s  "See what changed"
     unsay();
     zoomTo('.verdict-toggle', 1.5, 500);
     await moveTo('.verdict-toggle', 600, 0.3, 0.5);
@@ -204,7 +228,7 @@
     say(TEXT.compare);
     await wait(1900);
 
-    // 12.6–14.6s  flag it
+    // 19–21.5s  confirm the check
     unsay();
     document.getElementById('panel-body').scrollTo({ top: 9999, behavior: 'smooth' });
     await wait(450);
@@ -212,21 +236,30 @@
     await moveTo('.btn-secondary[data-value="agree"]', 500);
     await click('.btn-secondary[data-value="agree"]');
     say(TEXT.flag);
-    await wait(1300);
+    await wait(1500);
 
-    // 14.6–17.4s  switch to the claim that matches
+    // 21.5–25s  a mixed pill: logos, and no badge for the unrated source
     unsay();
     await zoomOut(420);
-    await moveTo('.cite-chip[data-claim="C2"]', 650);
-    await click('.cite-chip[data-claim="C2"]');
-    await wait(350);
-    say(TEXT.match);
-    await wait(1900);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await wait(500);
+    await moveTo(P2, 650);
+    await click(P2);
+    await wait(250);
+    await zoomTo('.src-pop', 1.4, 480);
+    say(TEXT.badge);
+    await wait(1500);
+    await zoomOut(380);
+    await moveTo(NEXT, 450);
+    await click(NEXT);                      // the arXiv preprint: logo, but no badge
+    await wait(200);
+    await zoomTo('.src-pop', 1.4, 450);
+    await wait(1600);
 
-    // 17.4–24s  hard cut to the end card
+    // 25–31s  hard cut to the end card
     unsay();
     end.classList.add('is-on');
-    await wait(6200);
+    await wait(6000);
     window.__videoDone = true;
   }
 
