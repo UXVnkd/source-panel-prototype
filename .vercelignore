@@ -1,0 +1,15 @@
+# Only the prototype is deployed. Not deployed: generated media, licensed
+# video assets (Envato), case-study images and the render/capture scripts.
+screenshots/
+video/
+video-assets/
+shots/
+loops/
+today/
+logos/
+render.js
+loops-render.js
+shots-capture.js
+shots-v2-capture.js
+*.py
+__pycache__/

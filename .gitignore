@@ -1,0 +1,10 @@
+# Generated media (rebuild with the render/shot scripts)
+screenshots/
+video/
+shots/
+loops/out/
+loops/bg/
+# Licensed for the video only (Envato), never published
+video-assets/
+# Python cache
+__pycache__/

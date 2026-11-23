@@ -117,16 +117,26 @@
     // 0–3s: hook
     await say(TEXT.captions.hook, 2800);
 
-    // 3–6s: glide to the first chip; its claim gets the faint tint
-    await moveTo('.cite-chip[data-claim="C1"]', 1300);
-    hover('.cite-chip[data-claim="C1"]');
+    // 3–6s: glide to the sentence pill; its claims get the faint tint
+    const PILL = '.cite-chip[data-claim="G:C2,C1"]';
+    await moveTo(PILL, 1300);
+    hover(PILL);
     await wait(700);
 
-    // 6–11s: open the panel, both highlights land; hold
-    await click('.cite-chip[data-claim="C1"]');
-    unhover('.cite-chip[data-claim="C1"]');
-    await wait(500);
-    await say(TEXT.captions.open, 3600);
+    // 6–11s: the pill opens a popover with the exact source line; page to the 1% claim
+    await click(PILL);
+    unhover(PILL);
+    await wait(900);
+    await say(TEXT.captions.match, 1800);
+    await moveTo('[aria-label="Next source"]', 700);
+    await click('[aria-label="Next source"]');
+    await wait(600);
+    await say(TEXT.captions.open, 2000);
+
+    // Expand into the full side panel for the deep comparison
+    await moveTo('.sp-foot .sp-link:last-child', 800);
+    await click('.sp-foot .sp-link:last-child');
+    await wait(700);
 
     // 11–14s: hover the source line → the claim pulses
     await moveTo('.source-line', 1000, 0.55, 0.3);
@@ -142,15 +152,10 @@
 
     // 20–23s: flag it
     await scrollPanelTo('.feedback', 140);
-    await moveTo('.btn-secondary[data-value="mismatch"]', 800);
-    await click('.btn-secondary[data-value="mismatch"]');
+    await moveTo('.btn-secondary[data-value="agree"]', 800);
+    await click('.btn-secondary[data-value="agree"]');
     await say(TEXT.captions.feedback, 2200);
 
-    // 23–27s: switch to a claim that matches
-    await moveTo('.cite-chip[data-claim="C2"]', 1000);
-    await click('.cite-chip[data-claim="C2"]');
-    await wait(500);
-    await say(TEXT.captions.match, 2600);
 
     // 27–32s: close, end card
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));

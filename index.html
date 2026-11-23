@@ -41,7 +41,7 @@
     <!-- Source panel (desktop: right side panel, mobile: bottom sheet) -->
     <aside class="panel" id="panel" aria-hidden="true" aria-labelledby="panel-title" inert>
       <!-- Mobile: drag this (or the header) down to close -->
-      <div class="panel-handle" aria-hidden="true"><span class="panel-handle-bar"></span></div>
+      <button class="panel-handle" id="panel-handle" type="button" aria-label="Expand source sheet"><span class="panel-handle-bar" aria-hidden="true"></span></button>
       <header class="panel-header">
         <div class="panel-heading">
           <h2 class="panel-title" id="panel-title" tabindex="-1">Source</h2>
@@ -60,7 +60,10 @@
   <script src="icons.js"></script>
   <script src="data.js"></script>
   <script src="script.js"></script>
+  <script src="live.js"></script>
   <!-- Demo mode for recording the video: only runs with ?demo in the URL -->
   <script src="demo.js"></script>
+  <!-- Video timeline for rendering: only runs with #video -->
+  <script src="video.js"></script>
 </body>
 </html>

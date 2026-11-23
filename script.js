@@ -16,6 +16,7 @@
   let activeClaimId = null;
   let openerChip = null;
 
+
   // Feedback given per claim this session: { C1: 'match' | 'mismatch' }.
   // Not saved anywhere (out of scope); it resets on reload.
   const feedback = {};
@@ -90,16 +91,58 @@
     if (piece.after) group.appendChild(document.createTextNode(piece.after));
 
     // The chip: a real button showing the source's short name.
-    const chip = el('button', 'cite-chip', source.label);
+    // (Skipped when the citation is collapsed into a sentence pill.)
+    if (piece.chip === false) { frag.appendChild(group); return frag; }
+    const chip = el('button', 'cite-chip' + (source.trusted ? ' is-trusted' : ''));
+    chip.appendChild(logo(source));
+    chip.appendChild(document.createTextNode(source.label));
+    if (source.trusted) chip.appendChild(icon('badge-check', 'trust-icon'));   // AI rates the site as reputable
     chip.type = 'button';
     chip.dataset.claim = piece.claim;
-    chip.setAttribute('aria-label', `Show source ${source.name} for: ${claim.text}`);
+    chip.setAttribute('aria-label', `Show source ${source.name}${source.trusted ? ', a reputable source' : ''}, for: ${claim.text}`);
     chip.setAttribute('aria-controls', 'panel');
     chip.setAttribute('aria-expanded', 'false');
     group.appendChild(chip);
 
     frag.appendChild(group);
     return frag;
+  }
+
+  // ---------- Collapsed pills: several citations in one sentence ----------
+  // A pill's key is "G:C2,C1". It behaves like a chip: hover tints all its claims,
+  // and tapping opens a list of its sources in the panel.
+  const isGroup = key => typeof key === 'string' && key.startsWith('G:');
+  const groupIds = key => key.slice(2).split(',');
+
+  // Site logo: a small tile with the source's favicon (decorative; the name is always next to it).
+  function logo(source, cls) {
+    const t = document.createElement('span');
+    t.className = 'src-logo' + (source.logo && source.logo.wide ? ' is-wide' : '') + (cls ? ' ' + cls : '');
+    if (source.logo) { const img = document.createElement('img'); img.src = source.logo.src; img.alt = ''; t.appendChild(img); }
+    else { t.classList.add('is-letter'); t.textContent = (source.label || source.name || '?').trim().charAt(0).toUpperCase(); }   // live web sources
+    return t;
+  }
+
+  function renderPill(ids) {
+    const sources = [...new Set(ids.map(id => DATA.claims[id].source))].map(s => DATA.sources[s]);
+    const first = sources[0];
+    // The check means every source in the pill is rated reputable; a mixed pill shows none.
+    const allTrusted = sources.every(s => s.trusted);
+    const pill = el('button', 'cite-chip is-pill' + (allTrusted ? ' is-trusted' : ''));
+    const stack = el('span', 'logo-stack');                 // overlapping logos, one per source
+    sources.forEach(s => stack.appendChild(logo(s)));
+    pill.appendChild(stack);
+    pill.appendChild(document.createTextNode(first.label));
+    // "+N" = more sources; "· N" = several citations from the same source
+    if (sources.length > 1 || ids.length > 1)
+      pill.appendChild(el('span', 'pill-more', sources.length > 1 ? `+${sources.length - 1}` : `· ${ids.length}`));
+    if (allTrusted) pill.appendChild(icon('badge-check', 'trust-icon'));
+    pill.type = 'button';
+    pill.dataset.claim = 'G:' + ids.join(',');
+    pill.setAttribute('aria-label', `Show ${ids.length} citations for this sentence, from ${sources.map(s => s.name).join(' and ')}${allTrusted ? ', all reputable sources' : ''}`);
+    pill.setAttribute('aria-controls', 'panel');
+    pill.setAttribute('aria-expanded', 'false');
+    return pill;
   }
 
   // Assistant answer: plain serif paragraph built from text + claim pieces.
@@ -109,7 +152,11 @@
     if (DATA.answerNote) wrap.appendChild(el('p', 'answer-note', DATA.answerNote));
     const p = el('p');
     DATA.answer.forEach(piece => {
-      p.appendChild(typeof piece === 'string' ? document.createTextNode(piece) : renderClaim(piece));
+      if (typeof piece === 'string') p.appendChild(document.createTextNode(piece));
+      else if (piece.pill) {
+        const groups = p.querySelectorAll('.cite-group');
+        (groups[groups.length - 1] || p).appendChild(renderPill(piece.pill));
+      } else p.appendChild(renderClaim(piece));
     });
     wrap.appendChild(p);
     thread.appendChild(wrap);
@@ -121,10 +168,12 @@
 
   // First piece of a claim (used for scroll position).
   function claimEl(claimId) {
+    if (isGroup(claimId)) claimId = groupIds(claimId)[0];
     return thread.querySelector(`.claim[data-claim="${claimId}"]`);
   }
   // Every piece of a claim (head + tail), for adding/removing state classes.
   function claimParts(claimId) {
+    if (isGroup(claimId)) return groupIds(claimId).flatMap(claimParts);
     return [...thread.querySelectorAll(`.claim[data-claim="${claimId}"]`)];
   }
 
@@ -147,7 +196,9 @@
 
   // Header: source name, type badge, date.
   function renderPanelHeader(source) {
-    panelTitle.textContent = source.name;
+    panelTitle.textContent = '';
+    panelTitle.appendChild(logo(source, 'is-lg'));
+    panelTitle.appendChild(document.createTextNode(source.name));
     panelMeta.innerHTML = '';
     panelMeta.appendChild(el('span', 'type-badge', source.type));
     panelMeta.appendChild(el('span', 'meta-date', source.date));
@@ -159,6 +210,12 @@
     label.appendChild(icon(source.icon, 'site-label-icon'));
     label.appendChild(el('span', null, source.siteLabel));
     panelAbout.appendChild(label);
+    if (source.trusted) {
+      const badge = el('span', 'trust-pill');
+      badge.appendChild(icon('badge-check'));
+      badge.appendChild(el('span', null, source.trustLabel || 'Reputable source'));   // live web: says who rated it
+      label.appendChild(badge);
+    }
     const about = el('p', 'site-about', source.about + ' ');
     about.appendChild(el('span', 'site-caveat', 'Describes the site, not this claim.'));
     panelAbout.appendChild(about);
@@ -199,7 +256,7 @@
     hits.forEach(h => {
       frag.appendChild(document.createTextNode(text.slice(pos, h.start)));
       const m = el('mark', 'flag', text.slice(h.start, h.end));
-      m.title = 'Changed meaning';
+      m.title = 'Possible change';
       frag.appendChild(m);
       pos = h.end;
     });
@@ -219,8 +276,10 @@
   }
 
   // Verdict + compare, shown progressively:
-  //  - Match:    one quiet line, "Matches the source". Nothing to expand.
-  //  - Mismatch: one line, "Changed meaning · See what changed". Tapping it
+  // Verdicts come from an automatic check, so they are worded as likelihoods
+  // and always say who judged them ("checked automatically").
+  //  - Match:    one quiet line, "Likely matches the source". Nothing to expand.
+  //  - Mismatch: "Possible change · See what changed". Tapping it
   //              reveals the side-by-side rows, the note and the feedback.
   // Keeps the first view light: the passage and its highlight do the main work.
   function renderCompare(claimId) {
@@ -231,7 +290,10 @@
     section.setAttribute('aria-label', 'How the answer compares with the source');
 
     if (!mismatch) {
-      section.appendChild(withIcon('p', 'verdict-tag verdict-ok', 'check', 'Matches the source'));
+      const ok = el('p', 'verdict-ok-line');
+      ok.appendChild(withIcon('span', 'verdict-tag verdict-ok', 'check', 'Likely matches the source'));
+      ok.appendChild(el('span', 'verdict-by', 'Compared by AI'));
+      section.appendChild(ok);
       return section;
     }
 
@@ -240,9 +302,13 @@
     toggle.type = 'button';
     toggle.setAttribute('aria-expanded', 'false');
     toggle.setAttribute('aria-controls', 'compare-detail');
-    toggle.appendChild(withIcon('span', 'verdict-tag verdict-warn', 'triangle-alert', 'Changed meaning'));
-    toggle.appendChild(el('span', 'verdict-more', 'See what changed'));
+    const main = el('span', 'verdict-main');
+    main.appendChild(withIcon('span', 'verdict-tag verdict-warn', 'triangle-alert', 'Possible change'));
+    main.appendChild(el('span', 'verdict-more', 'See what changed'));
+    toggle.appendChild(main);
     toggle.appendChild(icon('chevron-down', 'verdict-chevron'));
+    // Who judged it, and that it can be wrong
+    toggle.appendChild(el('span', 'verdict-by', 'Compared by AI · confirm in the source'));
     section.appendChild(toggle);
 
     // The hidden detail. Collapsed with a grid-rows trick so it can animate;
@@ -255,6 +321,7 @@
     card.appendChild(compareRow('In the answer:', claim.text, claim.flags.answer, claim.color));
     card.appendChild(compareRow('In the source:', claim.sourceLine, claim.flags.source, claim.color));
     card.appendChild(el('p', 'compare-note', claim.note));
+    card.appendChild(el('p', 'compare-limit', 'Based on this passage. Open the original for full context.'));
     inner.appendChild(card);
     inner.appendChild(renderFeedback(claimId));
     detail.appendChild(inner);
@@ -302,10 +369,11 @@
 
   function renderFeedback(claimId) {
     const section = el('div', 'feedback');
-    section.appendChild(el('p', 'feedback-q', 'Does the answer match the source?'));
+    section.appendChild(el('p', 'feedback-q', 'Does this check look right?'));
 
     const row = el('div', 'feedback-row');
-    const options = [['match', 'Matches'], ['mismatch', 'Doesn’t match']];
+    // Feedback is about the automatic check itself
+    const options = [['agree', 'Yes'], ['disagree', 'No, it’s wrong']];
     const buttons = options.map(([value, label]) => {
       const b = el('button', 'btn-secondary');
       b.appendChild(icon('check', 'chosen-icon'));   // visible only on the chosen option
@@ -345,13 +413,216 @@
 
   // Fill the panel for one claim.
   function renderPanel(claimId) {
+    if (isGroup(claimId)) { renderGroupPanel(groupIds(claimId)); return; }
     const source = DATA.sources[DATA.claims[claimId].source];
+    panelAbout.hidden = false;
     renderPanelHeader(source);
     panelBody.innerHTML = '';
+    if (backTo) panelBody.appendChild(renderBackLink());
     panelBody.appendChild(renderPassage(claimId));
     panelBody.appendChild(renderOpenOriginal(claimId));
     panelBody.appendChild(renderCompare(claimId));   // feedback lives inside its expandable part
   }
+
+  // ---------- Group panel: the sources behind one collapsed pill ----------
+  let backTo = null;   // group key to return to from a single source
+
+  function renderGroupPanel(ids) {
+    panelTitle.textContent = 'Sources for this sentence';
+    panelMeta.innerHTML = '';
+    panelMeta.appendChild(el('span', 'meta-date', `${ids.length} citations`));
+    panelAbout.innerHTML = ''; panelAbout.hidden = true;
+    panelBody.innerHTML = '';
+    const list = el('ul', 'group-list');
+    ids.forEach(id => {
+      const claim = DATA.claims[id], source = DATA.sources[claim.source];
+      const li = el('li');
+      const b = el('button', 'group-item'); b.type = 'button'; b.dataset.color = claim.color;
+      const body = el('span', 'gi-body');
+      const name = el('span', 'gi-name');
+      name.appendChild(logo(source));
+      const nm = name.appendChild(el('span', 'gi-text', source.name + ' '));   // trust check flows inline after the last word
+      if (source.trusted) nm.appendChild(icon('badge-check', 'trust-icon'));
+      body.appendChild(name);
+      body.appendChild(el('span', 'gi-meta', `${source.type} · ${source.date}`));
+      body.appendChild(el('span', 'gi-claim', `“${claim.text}”`));
+      const ok = claim.verdict !== 'mismatch';
+      body.appendChild(withIcon('span', 'gi-verdict', ok ? 'check' : 'triangle-alert', ok ? 'Likely matches' : 'Possible change'));
+      b.appendChild(body);
+      b.appendChild(icon('chevron-right', 'gi-go'));
+      b.setAttribute('aria-label', `${source.name}: ${claim.text}. ${ok ? 'Likely matches' : 'Possible change'}. Open source.`);
+      b.addEventListener('click', () => { backTo = activeClaimId; openPanel(id); });
+      // Hovering an item points to its claim in the answer
+      b.addEventListener('mouseenter', () => claimParts(id).forEach(c => c.classList.add('is-linked')));
+      b.addEventListener('mouseleave', () => claimParts(id).forEach(c => c.classList.remove('is-linked')));
+      li.appendChild(b); list.appendChild(li);
+    });
+    panelBody.appendChild(list);
+  }
+
+  function renderBackLink() {
+    const n = groupIds(backTo).length;
+    const b = el('button', 'back-link'); b.type = 'button';
+    b.appendChild(icon('chevron-left'));
+    b.appendChild(el('span', null, `All ${n} sources for this sentence`));
+    b.addEventListener('click', () => { const key = backTo; backTo = null; openPanel(key); });
+    return b;
+  }
+
+  // ---------- Source popover (desktop quick check) ----------
+  // Anchored under the chip or pill. One page per citation, with a ‹ 1/2 › pager.
+  // Shows the exact matching line (not a generic snippet), a quiet verdict, the
+  // site label, and "Expand" to open the full side panel.
+  let pop = null;     // { el, anchor, ids, index }
+
+  function openPopover(key, anchor) {
+    closePopover(false);
+    if (activeClaimId) closePanel();
+    const ids = isGroup(key) ? groupIds(key) : [key];
+    const el = document.createElement('div');
+    el.className = 'src-pop';
+    el.setAttribute('role', 'dialog');
+    el.tabIndex = -1;
+    document.querySelector('.chat-scroll').appendChild(el);
+    pop = { el, anchor, ids, index: 0 };
+    anchor.setAttribute('aria-expanded', 'true');
+    renderPopPage();
+    placePopover();
+    requestAnimationFrame(() => el.classList.add('is-open'));
+    el.focus({ preventScroll: true });
+  }
+
+  function closePopover(returnFocus) {
+    if (!pop) return;
+    const { el, anchor } = pop;
+    anchor.setAttribute('aria-expanded', 'false');
+    clearHighlights();
+    el.classList.remove('is-open');
+    setTimeout(() => el.remove(), 160);
+    pop = null;
+    if (returnFocus) anchor.focus({ preventScroll: true });
+  }
+
+  // Below the chip if it fits, else above; if neither, the roomier side with a
+  // capped height (the card's middle scrolls). The answer itself never moves.
+  function placePopover() {
+    const box = document.querySelector('.chat-scroll');
+    const a = pop.anchor.getBoundingClientRect(), b = box.getBoundingClientRect();
+    const el = pop.el;
+    el.style.maxHeight = 'none';
+    const w = el.offsetWidth, h = el.offsetHeight;
+    let left = a.left - b.left + box.scrollLeft;
+    left = Math.max(12, Math.min(left, box.clientWidth - w - 12));
+    const roomBelow = b.bottom - a.bottom - 20, roomAbove = a.top - b.top - 20;
+    const below = h <= roomBelow || (h > roomAbove && roomBelow >= roomAbove);
+    const room = below ? roomBelow : roomAbove;
+    const height = Math.min(h, Math.max(240, room));
+    el.style.maxHeight = height + 'px';
+    el.style.left = left + 'px';
+    el.style.top = (below ? a.bottom - b.top + box.scrollTop + 8 : a.top - b.top + box.scrollTop - height - 8) + 'px';
+    el.style.transformOrigin = below ? 'top left' : 'bottom left';
+  }
+
+  function renderPopPage() {
+    const { el, ids, index } = pop;
+    const id = ids[index], claim = DATA.claims[id], source = DATA.sources[claim.source];
+    el.setAttribute('aria-label', `Source ${index + 1} of ${ids.length}: ${source.name}`);
+    el.innerHTML = '';
+
+    // Header: pager (when several) + source count
+    const head = el.appendChild(document.createElement('div')); head.className = 'sp-head';
+    if (ids.length > 1) {
+      const pager = el2('div', 'sp-pager');
+      const prev = popBtn('chevron-left', 'Previous source', () => stepPop(-1));
+      const next = popBtn('chevron-right', 'Next source', () => stepPop(1));
+      prev.disabled = index === 0; next.disabled = index === ids.length - 1;
+      pager.append(prev, el2('span', 'sp-count', `${index + 1}/${ids.length}`), next);
+      head.appendChild(pager);
+    }
+    const n = new Set(ids.map(i => DATA.claims[i].source)).size;
+    head.appendChild(el2('span', 'sp-total', ids.length > 1 ? `${ids.length} citations · ${n} source${n > 1 ? 's' : ''}` : '1 source'));
+
+    // Scrollable middle: body + site label (header and actions stay put)
+    const scroll = el.appendChild(el2('div', 'sp-scroll'));
+    // Source identity + the exact matching line in the claim's color
+    const body = scroll.appendChild(el2('div', 'sp-body'));
+    const who = el2('div', 'sp-who');
+    who.appendChild(logo(source, 'is-md'));
+    who.appendChild(el2('span', null, `${source.label} · ${source.type} · ${source.date}`));
+    body.appendChild(who);
+    body.appendChild(el2('div', 'sp-title', source.name));
+    const quote = el2('blockquote', 'sp-line'); quote.dataset.color = claim.color;
+    quote.textContent = `“${claim.sourceLine}”`;
+    body.appendChild(quote);
+
+    // Verdict: quiet for matches; a mismatch expands the comparison inside the card
+    const ok = claim.verdict !== 'mismatch';
+    if (ok) {
+      const v = el2('p', 'sp-verdict');
+      v.appendChild(withIcon('span', 'sp-ok', 'check', 'Likely matches')); v.appendChild(el2('span', 'sp-by', '· Compared by AI'));
+      body.appendChild(v);
+    } else {
+      const t = el2('button', 'sp-toggle'); t.type = 'button'; t.setAttribute('aria-expanded', 'false');
+      t.appendChild(withIcon('span', 'verdict-tag verdict-warn', 'triangle-alert', 'Possible change'));
+      t.appendChild(el2('span', 'verdict-more', 'See what changed'));
+      t.appendChild(icon('chevron-down', 'verdict-chevron'));
+      const d = el2('div', 'sp-detail'); d.hidden = true;
+      d.appendChild(compareRow('In the answer:', claim.text, claim.flags.answer, claim.color));
+      d.appendChild(compareRow('In the source:', claim.sourceLine, claim.flags.source, claim.color));
+      d.appendChild(el2('p', 'compare-note', claim.note));
+      d.appendChild(el2('p', 'verdict-by', 'Compared by AI · confirm in the source'));
+      t.addEventListener('click', () => {
+        const open = d.hidden; d.hidden = !open; t.setAttribute('aria-expanded', String(open));
+        t.classList.toggle('is-open', open); placePopover();
+        if (open) setTimeout(() => d.scrollIntoView({ block: 'nearest', behavior: reduceMotion.matches ? 'auto' : 'smooth' }), 30);
+      });
+      body.append(t, d);
+    }
+
+    // Site label (describes the site, not the claim)
+    const site = el2('div', 'sp-site');
+    const lab = el2('div', 'sp-site-label');
+    if (source.trusted) { lab.appendChild(icon('badge-check', 'trust-icon')); lab.appendChild(el2('span', null, source.trustLabel || 'Reputable source')); }
+    else lab.appendChild(el2('span', null, source.siteLabel));
+    site.appendChild(lab);
+    site.appendChild(el2('p', 'sp-site-about', (source.trusted ? source.trustReason : source.about) + ' Describes the site, not this claim.'));
+    scroll.appendChild(site);
+
+    // Actions
+    const foot = el.appendChild(el2('div', 'sp-foot'));
+    const open = el2('a', 'sp-link'); open.href = buildFragmentUrl(source.url, claim.sourceLine);
+    open.target = '_blank'; open.rel = 'noopener noreferrer';
+    open.append(el2('span', null, 'Open original'), icon('arrow-up-right'));
+    const exp = el2('button', 'sp-link'); exp.type = 'button';
+    exp.append(icon('panel-right-open'), el2('span', null, 'Expand'));
+    exp.setAttribute('aria-label', 'Expand: open the full source panel');
+    exp.addEventListener('click', () => { const a = pop.anchor; closePopover(false); openPanel(id, a); });
+    foot.append(open, exp);
+
+    // The claim on this page lights up in the answer
+    clearHighlights();
+    claimParts(id).forEach(c => c.classList.add('is-active'));
+  }
+
+  function stepPop(d) {
+    pop.index = Math.max(0, Math.min(pop.ids.length - 1, pop.index + d));
+    renderPopPage(); placePopover();
+    const btn = pop.el.querySelector(d < 0 ? '[aria-label="Previous source"]' : '[aria-label="Next source"]');
+    (btn && !btn.disabled ? btn : pop.el).focus({ preventScroll: true });
+  }
+  function el2(tag, cls, text) { return el(tag, cls, text); }
+  function popBtn(ic, label, fn) {
+    const b = el('button', 'sp-nav'); b.type = 'button'; b.setAttribute('aria-label', label);
+    b.appendChild(icon(ic)); b.addEventListener('click', fn); return b;
+  }
+
+  // Close on Esc, outside click, or resize
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && pop) { e.stopImmediatePropagation(); closePopover(true); } }, true);
+  // pointerdown (not click): the card re-renders on paging, which would detach the clicked button
+  document.addEventListener('pointerdown', e => {
+    if (pop && !pop.el.contains(e.target) && !e.target.closest('.cite-chip')) closePopover(false);
+  });
+  window.addEventListener('resize', () => pop && placePopover());
 
   // ---------- Highlights ----------
 
@@ -390,10 +661,14 @@
   // Scroll the panel so the highlighted source line sits in view (about 1/3 down).
   // On mobile, also nudge the chat so the claim isn't hidden behind the sheet.
   function scrollToSourceLine(claimId) {
+    if (isGroup(claimId)) panelBody.scrollTop = 0;
     const behavior = reduceMotion.matches ? 'auto' : 'smooth';
     const line = sourceLineEl();
     if (line) {
-      const target = line.offsetTop - panelBody.clientHeight / 3;
+      // Medium sheet: only the top of the body is visible, so bring the line up under the header.
+      const target = (isMobile.matches && detent === 'medium')
+        ? line.offsetTop - 28
+        : line.offsetTop - panelBody.clientHeight / 3;
       panelBody.scrollTo({ top: Math.max(0, target), behavior });
     }
     if (isMobile.matches) {
@@ -432,6 +707,19 @@
     });
   }
 
+  // ---------- iOS-style sheet detents (mobile) ----------
+  // medium: half height, background visible and tappable (not modal)
+  // large:  near full height, background dimmed and scaled back (modal)
+  const handleBtn = document.getElementById('panel-handle');
+  let detent = null;
+
+  function setDetent(d) {
+    detent = d;
+    if (d) document.body.dataset.detent = d; else delete document.body.dataset.detent;
+    if (handleBtn) handleBtn.setAttribute('aria-label', d === 'large' ? 'Collapse source sheet' : 'Expand source sheet');
+    syncPanelRole();
+  }
+
   // Show a claim in the panel: render content, highlight both sides, scroll.
   function showClaim(claimId) {
     renderPanel(claimId);
@@ -454,6 +742,7 @@
     if (!wasOpen) {
       // First open: set the open state first (on mobile this adds the chat's
       // extra bottom room, so the claim can scroll above the sheet), then fill.
+      if (isMobile.matches) setDetent('medium');
       shiftChat(() => document.body.classList.add('panel-open'), true);
       panel.setAttribute('aria-hidden', 'false');
       panel.inert = false;
@@ -482,10 +771,12 @@
   function closePanel() {
     if (!activeClaimId) return;
     activeClaimId = null;
+    backTo = null;
     swapToken++;                                    // cancel any pending swap
     panel.classList.remove('is-swapping');
     clearHighlights();
     shiftChat(() => document.body.classList.remove('panel-open'), false);
+    setDetent(null);
     panel.setAttribute('aria-hidden', 'true');
     panel.inert = true;                             // closed panel can't be tabbed into
     syncChipState();
@@ -496,7 +787,7 @@
 
   // Mobile only (the sheet is a modal dialog there): keep Tab inside it.
   function trapFocus(e) {
-    if (!activeClaimId || !isMobile.matches) return;
+    if (!activeClaimId || !isMobile.matches || detent !== 'large') return;
     const focusable = [...panel.querySelectorAll('button:not(:disabled), a[href], [tabindex="-1"]')]
       .filter(n => !n.closest('[inert]'))            // skip collapsed (inert) content
       .filter(n => n.tabIndex >= 0 || n === panelTitle);
@@ -515,7 +806,12 @@
     // Chip click opens (or swaps) the panel.
     thread.addEventListener('click', e => {
       const chip = e.target.closest('.cite-chip');
-      if (chip) openPanel(chip.dataset.claim, chip);
+      if (!chip) return;
+      backTo = null;
+      if (isMobile.matches) { openPanel(chip.dataset.claim, chip); return; }
+      // Desktop: a popover anchored to the chip handles the quick check.
+      if (pop && pop.anchor === chip) { closePopover(true); return; }
+      openPopover(chip.dataset.claim, chip);
     });
 
     closeBtn.addEventListener('click', closePanel);
@@ -528,7 +824,9 @@
     // Desktop: clicking anywhere outside the panel (and not on a chip) closes it.
     document.addEventListener('click', e => {
       if (!activeClaimId) return;
-      if (panel.contains(e.target) || e.target.closest('.cite-chip')) return;
+      if (panel.contains(e.target) || e.target.closest('.cite-chip, .src-pop')) return;
+      if (isMobile.matches && detent === 'medium') return;   // iOS: an undimmed sheet stays open
+      if (isMobile.matches && !e.target.closest('.panel-backdrop')) return;
       closePanel();
     });
   }
@@ -573,47 +871,63 @@
   function syncPanelRole() {
     if (isMobile.matches) {
       panel.setAttribute('role', 'dialog');
-      panel.setAttribute('aria-modal', 'true');
+      panel.setAttribute('aria-modal', String(detent === 'large'));   // medium leaves the answer usable
     } else {
       panel.removeAttribute('role');
       panel.removeAttribute('aria-modal');
     }
   }
 
-  // Swipe down on the handle or header to close. The sheet follows the
-  // finger; release past 25% of its height (or a quick flick) closes it,
-  // otherwise it springs back.
+  // Drag the sheet (grabber or header; anywhere at medium). It follows the finger,
+  // resists past the top, then lands on the nearest detent, projecting a flick
+  // forward (as iOS does). Below medium it dismisses.
   function bindSheetDrag() {
-    let startY = 0, dy = 0, startT = 0, dragging = false;
+    let startY = 0, base = 0, y = 0, lastY = 0, lastT = 0, v = 0, dragging = false, moved = false;
+    const sheetH = () => panel.offsetHeight;
+    const mediumOffset = () => sheetH() - parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-medium')) / 100 * innerHeight || sheetH() * 0.45;
+    const offsetFor = d => d === 'large' ? 0 : panel.getBoundingClientRect().top - (innerHeight - sheetH());
 
     panel.addEventListener('pointerdown', e => {
       if (!isMobile.matches || !activeClaimId) return;
-      if (!e.target.closest('.panel-handle, .panel-header') || e.target.closest('button')) return;
-      dragging = true;
-      startY = e.clientY; dy = 0; startT = performance.now();
-      panel.classList.add('is-dragging');           // turns off the CSS transition
+      const onGrab = e.target.closest('.panel-handle, .panel-header');
+      if (!onGrab && detent !== 'medium') return;                 // large: content scrolls instead
+      if (e.target.closest('button:not(.panel-handle), a')) return;
+      dragging = true; moved = false;
+      startY = lastY = e.clientY; lastT = performance.now(); v = 0;
+      base = offsetFor(detent); y = base;
+      panel.classList.add('is-dragging');
       panel.setPointerCapture(e.pointerId);
     });
 
     panel.addEventListener('pointermove', e => {
       if (!dragging) return;
-      const raw = e.clientY - startY;
-      // Down: follows the finger 1:1. Up: damped resistance (rubber band),
-      // so the sheet gives a little instead of hitting a hard stop.
-      dy = raw >= 0 ? raw : -Math.sqrt(-raw) * 2;
-      panel.style.transform = `translateY(${dy}px)`;
+      const now = performance.now();
+      v = (e.clientY - lastY) / Math.max(1, now - lastT); lastY = e.clientY; lastT = now;
+      const raw = base + (e.clientY - startY);
+      if (Math.abs(e.clientY - startY) > 6) moved = true;
+      y = raw >= 0 ? raw : -Math.sqrt(-raw) * 2;                   // rubber band above large
+      panel.style.transform = `translateY(${y}px)`;
     });
 
     function endDrag() {
       if (!dragging) return;
       dragging = false;
-      const speed = dy / Math.max(1, performance.now() - startT);  // px per ms
-      panel.classList.remove('is-dragging');        // transition back on
-      panel.style.transform = '';                   // animate from the current spot…
-      if (dy > panel.offsetHeight * 0.25 || speed > 0.6) closePanel();  // …down and out, or back up
+      panel.classList.remove('is-dragging');
+      panel.style.transform = '';
+      if (!moved) return;                                        // a tap: the grabber's click handles it
+      const projected = y + v * 220;                             // where a flick would carry it
+      const stops = [['large', 0], ['medium', mediumOffset()], ['closed', sheetH()]];
+      const [target] = stops.reduce((best, s) => Math.abs(s[1] - projected) < Math.abs(best[1] - projected) ? s : best);
+      if (target === 'closed') closePanel(); else setDetent(target);
     }
     panel.addEventListener('pointerup', endDrag);
     panel.addEventListener('pointercancel', endDrag);
+
+    // Tapping the grabber switches between medium and large (also works with keyboard / VoiceOver).
+    if (handleBtn) handleBtn.addEventListener('click', () => {
+      if (moved) { moved = false; return; }
+      setDetent(detent === 'large' ? 'medium' : 'large');
+    });
   }
 
   // ---------- Start ----------
@@ -628,4 +942,28 @@
   bindSheetDrag();
   syncPanelRole();
   isMobile.addEventListener('change', syncPanelRole);
+
+  // Live mode (live.js) swaps DATA.question / answer / claims and calls these.
+  window.SourcePanel = {
+    // Close anything open and draw the thread again from DATA.
+    render() {
+      closePopover(false);
+      if (activeClaimId) closePanel();
+      thread.textContent = '';
+      renderQuestion();
+      renderAnswer();
+      bindChipHover();
+    },
+    // Show just the question plus a status line while Claude works.
+    pending(question) {
+      closePopover(false);
+      if (activeClaimId) closePanel();
+      thread.textContent = '';
+      const q = el('div', 'msg-user'); q.appendChild(el('p', null, question)); thread.appendChild(q);
+      const a = el('div', 'msg-assistant');
+      const status = el('p', 'live-status'); status.setAttribute('role', 'status');
+      a.appendChild(status); thread.appendChild(a);
+      return status;
+    }
+  };
 })();

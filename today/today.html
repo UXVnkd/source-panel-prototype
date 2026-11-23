@@ -1,0 +1,102 @@
+<!doctype html><html><head><meta charset="utf-8">
+<!-- Illustrative "checking today" screens for the case study. example.org is a placeholder site. -->
+<style>
+:root{--ink:#1f1d1a;--muted:#6b665e;--line:#e4e1db;--chrome:#e9e7e3;--fieldbg:#f3f2ef}
+*{box-sizing:border-box}html,body{margin:0;width:1000px;height:100%;overflow:hidden;font-family:-apple-system,"SF Pro Text","Inter",system-ui,sans-serif;color:var(--ink);background:#fff;-webkit-font-smoothing:antialiased}
+.win{position:absolute;inset:0;display:flex;flex-direction:column;background:#fff}
+/* browser chrome */
+.tabs{display:flex;align-items:flex-end;height:40px;padding:0 10px;background:var(--chrome);gap:1px}
+.lights{display:flex;gap:8px;margin:0 16px 14px 6px}.lights i{width:12px;height:12px;border-radius:50%}
+.lights i:nth-child(1){background:#ee6a5f}.lights i:nth-child(2){background:#f5be4f}.lights i:nth-child(3){background:#62c554}
+.tab{display:flex;align-items:center;gap:8px;height:32px;width:240px;padding:0 12px;border-radius:8px 8px 0 0;font-size:12.5px;color:#5c5852;white-space:nowrap}
+.tab span{overflow:hidden;text-overflow:ellipsis}.tab.on{background:#fff;color:var(--ink)}
+.fav{width:16px;min-width:16px;max-width:16px;height:16px;flex:0 0 16px;font-style:normal;border-radius:4px;display:grid;place-items:center;font:700 10px/1 system-ui;color:#fff}
+.fav.chat{background:#5b5f97}.fav.fsite{background:#0f5c4d}
+.fav svg{width:11px;height:11px}
+.tb{display:flex;align-items:center;gap:14px;height:42px;padding:0 12px;border-bottom:1px solid var(--line)}
+.tb .ic{display:flex;gap:14px;color:#8a857d}.tb svg{width:16px;height:16px}
+.url{flex:1;height:28px;border-radius:14px;background:var(--fieldbg);display:flex;align-items:center;gap:8px;padding:0 12px;font-size:13px;color:#4b4741}
+.url svg{width:12px;height:12px;color:#8a857d}.url b{font-weight:500;color:var(--ink)}
+/* site */
+.site{display:flex;align-items:center;justify-content:space-between;height:52px;padding:0 48px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:-.01em}
+.brand i{width:22px;height:22px;border-radius:6px;background:#0f5c4d;display:grid;place-items:center;color:#fff;font:700 12px/1 system-ui;font-style:normal}
+.nav{display:flex;gap:22px;font-size:13px;color:var(--muted)}
+.page{position:relative;flex:1;padding:28px 48px 0;display:grid;grid-template-columns:600px 1fr;gap:40px;overflow:hidden}
+.kicker{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:#0f5c4d;font-weight:600}
+h1{font-size:27px;line-height:1.2;letter-spacing:-.015em;margin:8px 0 8px;font-weight:700}
+.by{font-size:12.5px;color:var(--muted);margin-bottom:18px}
+.body p{font-family:Georgia,"Times New Roman",serif;font-size:16px;line-height:1.65;margin:0 0 14px}
+.ad{border-radius:6px;background:#f4f2ee;border:1px solid #ebe8e2;display:grid;place-items:center;color:#a49e94;font-size:10.5px;letter-spacing:.12em}
+.side .ad{height:220px}.side .rel{margin-top:18px;font-size:12px;color:var(--muted);font-weight:600}
+.side .rel div{height:8px;border-radius:4px;background:#eeece7;margin-top:10px}
+/* chat app */
+.chatapp{flex:1;background:#f6f3ec;padding:30px 48px;display:flex;flex-direction:column;gap:20px}
+.q{align-self:flex-end;max-width:70%;background:#ebe5d9;border-radius:18px;padding:11px 16px;font-size:14px;line-height:1.45}
+.a{font-family:Georgia,serif;font-size:17px;line-height:1.7;max-width:780px}
+.n{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#e3ddd1;color:#5e584f;font:600 10.5px/1 system-ui;vertical-align:2px;margin-left:2px}
+.n.hit{background:#cfc6b6;color:var(--ink)}
+.cursor{position:absolute;width:20px;height:20px}
+.disc{margin-top:auto;font-size:12px;color:#8a857d;text-align:center}
+.tip{position:absolute;background:#2b2925;color:#fff;font-size:12px;border-radius:6px;padding:5px 9px;white-space:nowrap}
+/* overlays */
+.cookie{position:absolute;left:24px;right:24px;bottom:18px;display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 36px rgba(0,0,0,.16);padding:14px 18px;font-size:12.5px;z-index:5}
+.cookie p{margin:0;flex:1;color:var(--muted);line-height:1.45}.cookie strong{display:block;color:var(--ink);font-size:13px;margin-bottom:2px}
+.btn{height:32px;padding:0 14px;border-radius:8px;border:1px solid #cfcac2;display:grid;place-items:center;font-size:12.5px;white-space:nowrap;background:#fff}
+.btn.p{background:#1f1d1a;color:#fff;border-color:#1f1d1a}
+.fade{position:absolute;left:0;right:0;top:150px;bottom:0;background:linear-gradient(rgba(255,255,255,0),#fff 45%);z-index:3}
+.wall{position:absolute;left:48px;top:205px;width:600px;z-index:4;border:1px solid var(--line);border-radius:12px;background:#fff;padding:18px 20px;box-shadow:0 8px 28px rgba(0,0,0,.08)}
+.wall h3{margin:0 0 4px;font-size:15px}.wall p{margin:0 0 12px;font-size:12.5px;color:var(--muted)}
+.find{position:absolute;right:14px;top:88px;z-index:6;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 26px rgba(0,0,0,.14);padding:7px 8px 7px 10px;font-size:13px}
+.find .in{width:200px;height:28px;border:1.5px solid #d14b45;border-radius:7px;display:flex;align-items:center;padding:0 9px}
+.find .cnt{color:#c0392b;font-size:12px;font-variant-numeric:tabular-nums}.find .ar{display:flex;gap:6px;color:#9a958c}.find svg{width:14px;height:14px}
+.u{text-decoration:underline dotted #b9822c 2.5px;text-underline-offset:4px}
+/* split */
+.split{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;gap:14px;background:#cfc9bf;padding:0}
+.split .win{position:relative}.split .tab{width:200px}
+.split .chatapp{padding:24px 28px}.split .a{font-size:15.5px}
+.split .page{display:block;padding:24px 28px 0}
+</style></head><body>
+<script>
+const I={chat:'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>',
+lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+fwd:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
+rel:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>',
+up:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>',
+dn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+ptr:'<svg viewBox="0 0 24 24"><path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z" fill="#1f1d1a" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>'};
+const CHATTAB='Are we concerned enough about…', SITETAB='AI summaries and clicks | Example Research';
+const tabs=(on,two=true)=>`<div class="tabs"><div class="lights"><i></i><i></i><i></i></div>
+ <div class="tab ${on==='chat'?'on':''}"><i class="fav chat">${I.chat}</i><span>${CHATTAB}</span></div>
+ ${two?`<div class="tab ${on==='site'?'on':''}"><i class="fav fsite">E</i><span>${SITETAB}</span></div>`:''}</div>`;
+const tb=(url)=>`<div class="tb"><span class="ic">${I.back}${I.fwd}${I.rel}</span><div class="url">${I.lock}<span>${url}</span></div></div>`;
+const site=`<div class="site"><span class="brand"><i>E</i>Example Research</span><span class="nav"><span>Topics</span><span>Data</span><span>Methods</span><span>Subscribe</span></span></div>`;
+const art=(extra='')=>`<div class="page"><div class="body">
+ <div class="kicker">Short read · Technology</div>
+ <h1>Users are less likely to click on links when an AI summary appears</h1>
+ <div class="by">By the research team · July 2025 · 6 min read</div>
+ <p>Users who encountered an AI summary clicked on a traditional search result link in 8% of all visits. Those who did not encounter one clicked on a result nearly twice as often.</p>
+ <p>Google users who encountered an AI summary also rarely clicked on a link in the summary itself. This occurred in just 1% of all visits to pages with such a summary.</p>
+ </div><div class="side"><div class="ad">ADVERTISEMENT</div><div class="rel">Related<div></div><div style="width:80%"></div><div style="width:65%"></div></div></div>${extra}</div>`;
+const answer=(chips)=>`Probably not. The warning asks people to check, but few do. In Google search, users who saw an AI summary clicked a traditional search result in 8% of visits,${chips[0]} and only 1% of people click the sources in AI answers.${chips[1]} And checking isn’t easy: 31% of responses had serious sourcing problems.${chips[2]}`;
+const S={
+ s1:`<div class="win">${tabs('chat',false)}${tb('chat.example/c/ai-disclaimers')}<div class="chatapp" style="position:relative">
+   <div class="q">AI chat apps warn that they “can make mistakes. Check important info.” Are we concerned enough about this?</div>
+   <div class="a">${answer(['<span class="n">1</span>','<span class="n hit" id="hit">1</span>','<span class="n">2</span>'])}</div>
+   <div class="disc">AI can make mistakes. Check important info.</div></div></div>`,
+ s2:`<div class="win">${tabs('site')}${tb('example.org/research/<b>ai-summaries-and-clicks</b>')}${site}${art()}</div>`,
+ s3:`<div class="win">${tabs('site')}${tb('example.org/research/<b>ai-summaries-and-clicks</b>')}${site}${art(`<div class="fade"></div><div class="wall"><h3>You’ve reached your free article limit</h3><p>Subscribe to keep reading this study and our full archive.</p><span class="btn p" style="width:fit-content">Subscribe</span></div>
+   <div class="cookie"><p><strong>We value your privacy</strong>We and our 214 partners use cookies to personalise ads and content.</p><span class="btn">Manage options</span><span class="btn">Reject all</span><span class="btn p">Accept all</span></div>`)}</div>`,
+ s4:`<div class="win">${tabs('site')}${tb('example.org/research/<b>ai-summaries-and-clicks</b>')}${site}${art()}
+   <div class="find"><div class="in">1% of people</div><span class="cnt">0 of 0</span><span class="ar">${I.up}${I.dn}${I.x}</span></div></div>`,
+ s5:`<div class="split">
+   <div class="win">${tabs('chat',false)}<div class="chatapp"><div class="a">…users who saw an AI summary clicked a traditional search result in 8% of visits, and <span class="u">only 1% of people</span> click the sources in <span class="u">AI answers</span>.<span class="n">1</span></div></div></div>
+   <div class="win"><div class="tabs"><div class="lights"><i></i><i></i><i></i></div><div class="tab on"><i class="fav fsite">E</i><span>${SITETAB}</span></div></div>
+     <div class="page"><div class="body"><p>Google users who encountered an AI summary also rarely clicked on a link in the summary itself. This occurred in just <span class="u">1% of all visits</span> to <span class="u">pages with such a summary</span>.</p></div></div></div></div>`
+};
+document.body.innerHTML=S[location.hash.slice(1)];
+const h=document.getElementById('hit'); if(h){const r=h.getBoundingClientRect();
+ const c=document.createElement('div');c.className='cursor';c.innerHTML=I.ptr;c.style.left=(r.left+r.width*0.55)+'px';c.style.top=(r.top+r.height*0.6)+'px';document.body.appendChild(c);}
+</script></body></html>
