@@ -8,9 +8,8 @@
 const { MODEL, send, readBody, overLimit, openai, messageOf } = require('./_lib');
 
 const INSTRUCTIONS = `You are a helpful AI assistant in a chat app. Answer the user's question the way you normally would: ` +
-`clear, complete and well organized, in plain language, using your own knowledge together with what you find on the web. ` +
-`Search the web and cite sources inline for specific facts, numbers, dates, quotes and recent information. ` +
-`Use short paragraphs; use a short list or a heading only when it genuinely helps. Aim for roughly 120 to 300 words unless the question needs less.`;
+`clear, complete and well organized, using your own knowledge together with what you find on the web. ` +
+`Search the web and cite sources inline for specific facts, numbers, dates, quotes and recent information. ` ;
 
 // Mark each citation with a private-use token, then rebuild the answer as
 // blocks of sentences, each carrying the source indexes it cites.
