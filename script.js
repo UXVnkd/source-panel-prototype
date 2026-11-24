@@ -150,15 +150,27 @@
     const wrap = el('div', 'msg-assistant');
     // Optional note above the answer (e.g. "Example answer written for this demo").
     if (DATA.answerNote) wrap.appendChild(el('p', 'answer-note', DATA.answerNote));
-    const p = el('p');
+    // Pieces flow into the current block. Live answers add {block: 'p' | 'h' | 'li'}
+    // pieces to start a paragraph, a heading or a list item.
+    let p = el('p'), list = null;
+    wrap.appendChild(p);
     DATA.answer.forEach(piece => {
       if (typeof piece === 'string') p.appendChild(document.createTextNode(piece));
-      else if (piece.pill) {
+      else if (piece.block) {
+        if (piece.block === 'li') {
+          if (!list) { list = el('ul', 'answer-list'); wrap.appendChild(list); }
+          p = el('li'); list.appendChild(p);
+        } else {
+          list = null;
+          p = el(piece.block === 'h' ? 'h3' : 'p', piece.block === 'h' ? 'answer-heading' : null);
+          wrap.appendChild(p);
+        }
+      } else if (piece.pill) {
         const groups = p.querySelectorAll('.cite-group');
         (groups[groups.length - 1] || p).appendChild(renderPill(piece.pill));
       } else p.appendChild(renderClaim(piece));
     });
-    wrap.appendChild(p);
+    wrap.querySelectorAll('p:empty').forEach(n => { if (!n.classList.contains('answer-note')) n.remove(); });
     thread.appendChild(wrap);
   }
 
@@ -289,6 +301,13 @@
     const section = el('section', 'compare ' + (mismatch ? 'is-mismatch' : 'is-match'));
     section.setAttribute('aria-label', 'How the answer compares with the source');
 
+    if (claim.verdict === 'unchecked') {               // live web: the page couldn't be read
+      const n = el('p', 'verdict-ok-line');
+      n.appendChild(withIcon('span', 'verdict-tag verdict-none', 'scan-search', 'Not checked'));
+      n.appendChild(el('span', 'verdict-by', 'The page couldn’t be read. Open the original to confirm.'));
+      section.appendChild(n);
+      return section;
+    }
     if (!mismatch) {
       const ok = el('p', 'verdict-ok-line');
       ok.appendChild(withIcon('span', 'verdict-tag verdict-ok', 'check', 'Likely matches the source'));
@@ -446,11 +465,12 @@
       body.appendChild(name);
       body.appendChild(el('span', 'gi-meta', `${source.type} · ${source.date}`));
       body.appendChild(el('span', 'gi-claim', `“${claim.text}”`));
-      const ok = claim.verdict !== 'mismatch';
-      body.appendChild(withIcon('span', 'gi-verdict', ok ? 'check' : 'triangle-alert', ok ? 'Likely matches' : 'Possible change'));
+      const ok = claim.verdict !== 'mismatch', none = claim.verdict === 'unchecked';
+      const vl = none ? 'Not checked' : ok ? 'Likely matches' : 'Possible change';
+      body.appendChild(withIcon('span', 'gi-verdict', none ? 'scan-search' : ok ? 'check' : 'triangle-alert', vl));
       b.appendChild(body);
       b.appendChild(icon('chevron-right', 'gi-go'));
-      b.setAttribute('aria-label', `${source.name}: ${claim.text}. ${ok ? 'Likely matches' : 'Possible change'}. Open source.`);
+      b.setAttribute('aria-label', `${source.name}: ${claim.text}. ${vl}. Open source.`);
       b.addEventListener('click', () => { backTo = activeClaimId; openPanel(id); });
       // Hovering an item points to its claim in the answer
       b.addEventListener('mouseenter', () => claimParts(id).forEach(c => c.classList.add('is-linked')));
@@ -552,12 +572,16 @@
     body.appendChild(who);
     body.appendChild(el2('div', 'sp-title', source.name));
     const quote = el2('blockquote', 'sp-line'); quote.dataset.color = claim.color;
-    quote.textContent = `“${claim.sourceLine}”`;
+    quote.textContent = claim.verdict === 'unchecked' ? claim.sourceLine : `“${claim.sourceLine}”`;
     body.appendChild(quote);
 
     // Verdict: quiet for matches; a mismatch expands the comparison inside the card
     const ok = claim.verdict !== 'mismatch';
-    if (ok) {
+    if (claim.verdict === 'unchecked') {
+      const v = el2('p', 'sp-verdict');
+      v.appendChild(withIcon('span', 'sp-ok', 'scan-search', 'Not checked')); v.appendChild(el2('span', 'sp-by', '· the page couldn’t be read'));
+      body.appendChild(v);
+    } else if (ok) {
       const v = el2('p', 'sp-verdict');
       v.appendChild(withIcon('span', 'sp-ok', 'check', 'Likely matches')); v.appendChild(el2('span', 'sp-by', '· Compared by AI'));
       body.appendChild(v);

@@ -1,0 +1,6 @@
+{
+  "functions": {
+    "api/answer.js": { "maxDuration": 60 },
+    "api/check.js": { "maxDuration": 60 }
+  }
+}

@@ -18,7 +18,12 @@
 // popover and panel.
 
 (function () {
-  if (!window.claude || typeof window.claude.use !== 'function') return;   // not in a Claude viewer
+  // Three ways to run, picked at load:
+  //   - inside a Claude artifact: the viewer's Claude (+ Firecrawl when connected)
+  //   - on a website with the /api functions (Vercel): OpenAI with web search
+  //   - anywhere else: the scripted example only
+  const inClaude = !!(window.claude && typeof window.claude.use === 'function');
+  if (!inClaude && !/^https?:$/.test(location.protocol)) return;
 
   const DATA = window.PROTOTYPE_DATA;
   const EXAMPLE = {                                      // to restore the scripted demo
@@ -42,6 +47,7 @@
     /credit|402|payment required|insufficient|quota|upgrade your plan/i.test(String(e.message || '') + ' ' + (() => { try { return JSON.stringify(e.result || ''); } catch (x) { return ''; } })());
 
   let sample = null, mcp = null, webReady = false, ctl = null, busy = false;
+  let server = null;                                     // OpenAI model name when the /api functions are set up
 
   // ---------- text helpers ----------
   // Normalise quotes, dashes and spaces so "word for word" survives typography.
@@ -305,6 +311,7 @@ In that case reply with one JSON object instead: {"checks":[...the array above..
     switch (code) {
       case 'not_granted': case 'sampling_disabled': case 'not_declared': case 'capability_disabled':
         return 'Live answers aren’t available in this view.';
+      case 'server_off': return 'Live answers aren’t set up on this site yet.';
       case 'rate_limited': return 'Too many requests right now. Try again in a minute.';
       case 'session_expired': return 'Please sign in to Claude again, then retry.';
       case 'refused': return 'Claude couldn’t answer that one. Try a different question.';
@@ -324,6 +331,80 @@ In that case reply with one JSON object instead: {"checks":[...the array above..
   }
   const HIDE = new Set(['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled', 'capability_removed']);
 
+  // ---------- server mode (Vercel /api, OpenAI with web search) ----------
+  const MAX_LIVE = 8;
+  async function post(path, body, signal) {
+    let r;
+    try {
+      r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
+    } catch (e) { throw { code: e && e.name === 'AbortError' ? 'cancelled' : 'upstream_error' }; }
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw { code: data.error === 'rate_limited' ? 'rate_limited' : data.error === 'missing_key' ? 'server_off' : 'upstream_error' };
+    return data;
+  }
+
+  async function askServer(question, status, signal) {
+    status.textContent = 'Searching the web and writing an answer…';
+    const a = await post('/api/answer', { question }, signal);
+
+    // Sources: one per cited page, rated by rule first (the AI rating comes with the check).
+    SRC = {}; const idOf = {};
+    (a.sources || []).forEach((src, i) => {
+      let host; try { host = new URL(src.url).hostname; } catch (e) { return; }
+      const id = 'S' + (Object.keys(SRC).length + 1), label = siteLabel(host), rule = ruleTrust(host, label, question);
+      idOf[i] = id;
+      SRC[id] = { label, name: String(src.title || host).slice(0, 120), type: 'Web page', siteLabel: host, icon: 'globe',
+        trusted: !!rule, trustBy: rule ? 'rule' : null, trustLabel: rule ? rule[0] : '', trustReason: rule ? rule[1] : '',
+        about: rule ? rule[1] : 'Found by a live web search just now. Not rated yet.', date: 'Read just now', url: src.url, passage: '' };
+    });
+
+    // The answer as written: blocks of sentences; a cited sentence becomes a claim with a pill.
+    const pieces = [], items = [];
+    (a.blocks || []).forEach(b => {
+      pieces.push({ block: b.type === 'h' || b.type === 'li' ? b.type : 'p' });
+      (b.sentences || []).forEach((sn, si) => {
+        if (si) pieces.push(' ');
+        const ids = (sn.cites || []).map(i => idOf[i]).filter(Boolean);
+        if (ids.length && items.length < MAX_LIVE && b.type !== 'h') {
+          const id = 'L' + (items.length + 1);
+          items.push({ id, text: sn.text, source: ids[0], sentence: sn.text });
+          pieces.push({ claim: id, chip: false }, { pill: [id] });
+        } else pieces.push(sn.text);
+      });
+    });
+    if (!pieces.length) throw { code: 'invalid_json' };
+
+    let claims = {};
+    if (items.length) {
+      const pages = new Set(items.map(it => it.source)).size;
+      status.textContent = `Reading ${pages} page${pages > 1 ? 's' : ''} and checking ${items.length === 1 ? 'the claim' : `${items.length} claims`}…`;
+      const c = await post('/api/check', {
+        claims: items.map(it => ({ id: it.id, text: it.text, sentence: it.sentence, url: SRC[it.source].url })),
+        rate: Object.entries(SRC).filter(([, s]) => !s.trusted).map(([id, s]) => ({ id, host: s.siteLabel, title: s.name }))
+      }, signal);
+      const unread = new Set();
+      Object.entries(SRC).forEach(([id, s]) => {
+        const text = String((c.passages || {})[s.url] || '').trim();
+        if (text.length > 80) s.passage = text;
+        else { unread.add(id); s.passage = 'This page couldn’t be read automatically, for example because of a paywall or a block on automated visits.'; }
+      });
+      claims = buildClaims(items, c.checks);
+      items.forEach(it => {                               // be honest when there was nothing to check against
+        if (!unread.has(it.source)) return;
+        Object.assign(claims[it.id], { verdict: 'unchecked', sourceLine: SRC[it.source].passage, flags: { answer: [], source: [] },
+          note: 'The page couldn’t be read automatically, so this claim wasn’t checked. Open the original to confirm.' });
+      });
+      applySiteRatings(c.sites);
+      trimPassages(claims);
+    }
+    Object.assign(DATA, {
+      question, answer: pieces, claims, sources: SRC,
+      answerNote: items.length
+        ? `Live answer by OpenAI ${server} with web search. A separate call read each cited page and checked the claim against it.`
+        : `Live answer by OpenAI ${server}. It didn’t cite any web pages, so there is nothing to check.`
+    });
+  }
+
   // ---------- the flow ----------
   async function ask(question) {
     if (busy || !question.trim()) return;
@@ -332,6 +413,12 @@ In that case reply with one JSON object instead: {"checks":[...the array above..
     const status = window.SourcePanel.pending(question);
     SRC = BASE; let mode = 'base', webNote = '';
     try {
+      if (server) {
+        await askServer(question, status, ctl.signal);
+        window.SourcePanel.render();
+        resetLink.hidden = false;
+        return;
+      }
       if (webReady) {
         status.textContent = 'Searching the web…';
         try { SRC = await webSources(question, ctl.signal, status); mode = 'web'; }
@@ -390,7 +477,7 @@ In that case reply with one JSON object instead: {"checks":[...the array above..
     if (hintSpan) hintSpan.textContent = creditsOutToday()
       ? 'Live: Firecrawl’s free credits are used up for today, so Claude answers from the three sources, then a second call checks each claim.'
       : hintText();
-    if (input) input.placeholder = webReady ? 'Ask anything, Claude will search the web…' : 'Ask about AI citations, live…';
+    if (input) input.placeholder = server ? 'Ask anything, it will search the web…' : webReady ? 'Ask anything, Claude will search the web…' : 'Ask about AI citations, live…';
   }
   function buildComposer() {
     const old = document.querySelector('.composer');
@@ -456,7 +543,9 @@ In that case reply with one JSON object instead: {"checks":[...the array above..
     composer.after(hint);
   }
 
-  const hintText = () => webReady
+  const hintText = () => server
+    ? `Live: OpenAI ${server} searches the web and answers, then a second call reads each cited page and checks the claim. A few questions per hour per visitor.`
+    : webReady
     ? 'Live: Claude searches the web with your Firecrawl, answers from the pages it reads, then a second call checks each claim. Repeat questions reuse earlier results for a day.'
     : 'Live: Claude answers from the three sources, then a second call checks each claim. Uses your Claude account.';
 
@@ -469,6 +558,16 @@ In that case reply with one JSON object instead: {"checks":[...the array above..
       const fc = (servers || []).find(x => x.server === FC);
       return !!(fc && fc.authStatus !== 'needs_reauth' && (fc.tools || []).some(t => t.name === 'firecrawl_search'));
     } catch (e) { return false; }
+  }
+
+  if (!inClaude) {
+    // A website: live only when the /api functions are deployed with a key.
+    fetch('/api/health', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(h => {
+      if (!h || !h.ok) return;
+      server = String(h.model || 'model');
+      buildComposer(); updateHint();
+    }).catch(() => {});
+    return;
   }
 
   Promise.all([window.claude.use('sample'), detectWeb()]).then(([s, web]) => {

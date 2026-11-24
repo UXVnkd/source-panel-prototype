@@ -1147,3 +1147,9 @@ body.demo-mode, body.demo-mode * { cursor: none !important; }
 .composer-hint a { color: var(--accent); text-underline-offset: 2px; }
 .src-logo.is-letter { font: 600 8.5px/1 var(--font-sans); color: #fff; background: #8A7F71; box-shadow: none; }
 .src-logo.is-letter.is-md, .src-logo.is-letter.is-lg { font-size: 12px; }
+
+/* Live answers: headings and lists, in the answer's serif voice */
+.msg-assistant .answer-heading { font-family: var(--font-sans); font-size: 16px; font-weight: 600; margin: var(--space-5) 0 var(--space-2); color: var(--text); }
+.msg-assistant .answer-list { margin: 0 0 var(--space-4); padding-left: 1.3em; }
+.msg-assistant .answer-list li { margin-bottom: var(--space-2); }
+.verdict-tag.verdict-none { color: var(--text-muted); background: var(--surface-sunk, #EFEAE0); }

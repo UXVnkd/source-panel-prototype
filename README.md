@@ -18,7 +18,15 @@ When the page runs as a Claude artifact and the viewer is signed in, the compose
 3. A separate Claude call checks each claim against its source, and the page confirms each quoted line really is in the source.
 4. Web sources get a trust badge only by rule (official, government, academic site) or by an AI rating that says so.
 
-Anywhere else (a local file, Vercel) the page shows the scripted example.
+## Live mode on a website (Vercel + OpenAI)
+The `api/` folder holds three Vercel functions (no dependencies):
+- `api/answer.js`: OpenAI Responses API with the hosted `web_search` tool writes a full answer; each `url_citation` is attached to the sentence it supports.
+- `api/check.js`: reads each cited page on the server, then a separate call checks every claim against its page. Pages that can't be read show "Not checked".
+- `api/health.js`: tells the page whether a key is configured (never returns the key).
+
+Setup: in Vercel → Project → Settings → Environment Variables, add `OPENAI_API_KEY` (required), and optionally `OPENAI_MODEL` (default `gpt-6.2-astra`) and `HOURLY_LIMIT` (questions per visitor per hour, default 10). Redeploy. Also set a monthly spending limit in your OpenAI account: the per-visitor limit is best-effort.
+
+Without a key, the site shows the scripted example.
 
 ## Demo mode (for recording)
 - `index.html?demo` (or `#demo`): press Space to play the walkthrough, R to replay
@@ -31,7 +39,9 @@ Anywhere else (a local file, Vercel) the page shows the scripted example.
 | `style.css` | Layout, colors, motion (all values as CSS variables) |
 | `script.js` | Interactions: pills, popover, panel, sheet |
 | `data.js` | Answer, claims, sources, demo captions (single source of truth) |
-| `live.js` | Live mode (Claude artifact only) |
+| `live.js` | Live mode: Claude artifact, or the `api/` functions on a website |
+| `api/` | Vercel functions for live answers with OpenAI web search |
+| `vercel.json` | Function time limits |
 | `icons.js` | Lucide icons, inlined (ISC, see `LICENSE-lucide.txt`) |
 | `demo.js` | Autoplay walkthrough, only runs with `?demo` |
 | `video.js`, `render.js` | 4K60 video timeline and frame renderer (Node + Playwright + ffmpeg) |
