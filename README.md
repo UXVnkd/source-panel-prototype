@@ -24,7 +24,7 @@ The `api/` folder holds three Vercel functions (no dependencies):
 - `api/check.js`: reads each cited page on the server, then a separate call checks every claim against its page. Pages that can't be read show "Not checked".
 - `api/health.js`: tells the page whether a key is configured (never returns the key).
 
-Setup: in Vercel → Project → Settings → Environment Variables, add `OPENAI_API_KEY` (required), and optionally `OPENAI_MODEL` (default `gpt-6.2-astra`) and `HOURLY_LIMIT` (questions per visitor per hour, default 10). Redeploy. Also set a monthly spending limit in your OpenAI account: the per-visitor limit is best-effort.
+Setup: in Vercel → Project → Settings → Environment Variables, add `OPENAI_API_KEY` (required), and optionally `OPENAI_MODEL` (default `gpt-6-luna`) and `HOURLY_LIMIT` (questions per visitor per hour, default 10). Redeploy. Also set a monthly spending limit in your OpenAI account: the per-visitor limit is best-effort.
 
 Without a key, the site shows the scripted example.
 

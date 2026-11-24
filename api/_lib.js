@@ -3,10 +3,10 @@
 //
 // Environment variables (set in Vercel → Project → Settings → Environment Variables):
 //   OPENAI_API_KEY   required. Never sent to the browser.
-//   OPENAI_MODEL     optional, default "gpt-6.2-astra" (OpenAI's recommended web search model)
+//   OPENAI_MODEL     optional, default "gpt-6-luna" (supports web search and reasoning effort)
 //   HOURLY_LIMIT     optional, questions per visitor per hour (default 10)
 
-const MODEL = process.env.OPENAI_MODEL || 'gpt-6.2-astra';
+const MODEL = process.env.OPENAI_MODEL || 'gpt-6-luna';
 const HOURLY_LIMIT = Number(process.env.HOURLY_LIMIT || 10);
 
 // ---------- requests ----------
